@@ -1,0 +1,43 @@
+const express = require('express');
+const bodyParser = require('body-parser');
+const fs = require('fs');
+const path = require('path');
+const cors = require('cors');
+
+const app = express();
+const port = process.env.PORT || 3000;
+const DATA_FILE = 'data.json';
+const AUTH_TOKEN = 'MYSECRET123'; // توکن امن برای ESP
+
+app.use(cors());
+app.use(bodyParser.json());
+app.use(express.static('public'));
+
+// دریافت داده‌ها از ESP
+app.post('/api/push', (req, res) => {
+    const token = req.headers['x-api-key'];
+    if(token !== AUTH_TOKEN) return res.status(401).send('Unauthorized');
+
+    const data = req.body;
+    fs.writeFileSync(DATA_FILE, JSON.stringify({ lastUpdate: Date.now(), data }));
+    console.log('✅ Data received:', data);
+    res.send('OK');
+});
+
+// داشبورد عمومی
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// API برای دریافت داده‌ها
+app.get('/api/data', (req, res) => {
+    if(fs.existsSync(DATA_FILE)){
+        res.json(JSON.parse(fs.readFileSync(DATA_FILE)));
+    } else {
+        res.json({ lastUpdate: null, data: {} });
+    }
+});
+
+app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+});
